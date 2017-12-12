@@ -6,10 +6,11 @@
 #include <unordered_map>
 #include <string>
 
+#include "main.h"
+
 using namespace cv;
 using namespace std;
 
-void bodyParts(Mat img);
 void drawRectangle(Point p1, Point p2, Mat img){
 
     vector<cv::Point> points;
@@ -25,26 +26,36 @@ double distanceBetweenTwoPoints(double x, double y, double a, double b) {
 	return sqrt(pow(x - a, 2) + pow(y - b, 2));
 }
 
-int main(int argc, char** argv )
-{
+int main(int argc, char** argv){
 	if ( argc != 2 )
 	{
         	printf("usage: DisplayImage.out <Image_Path>\n");
       	  	return -1;
    	}
 
-	Mat img,imgGray, des_img;
+	Mat img, des_img;
+	Rect bodyRect;
 	img = imread( argv[1], 1 );
+	resize(img, des_img, Size(500, 900), 0, 0, INTER_LINEAR);
+
+	bodyRect = bodyDetect(des_img);
+	bodyParts(des_img(bodyRect));
+
+	waitKey();
+}
+
+cv::Rect bodyDetect(cv::Mat image)
+{
+	Mat img;
+	img = image;
 
 	HOGDescriptor hog;
 	hog.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
-	img = imread( argv[1], 1 ); //il suffit de donner le path du fichier dans l'entree du programme
-	resize(img, des_img, Size(500, 900), 0, 0, INTER_LINEAR);
-	
 
 	vector<Rect> found, found_filtered;
-	hog.detectMultiScale(des_img, found, 0, Size(4, 4), Size(8, 8), 1.05, 2);
+	hog.detectMultiScale(img, found, 0, Size(4, 4), Size(8, 8), 1.05, 2);
 		
+	cout << "test" << endl;
 	size_t i, j;
 	double maxDistance = 0;
 	Rect maxRect;
@@ -61,14 +72,11 @@ int main(int argc, char** argv )
 			}
 		
 	}
-
-	bodyParts(des_img(maxRect));
 		
 	//imshow("image source", des_img);
 	//imshow("corp image", des_img(maxRect));
-
-	waitKey();
-	return 0;
+	
+	return maxRect;
 }
 
 cv::Mat cropBinary(Mat binaryMat){
@@ -178,7 +186,10 @@ void bodyParts (Mat img){
 		vertical.at<int>(i,0) = countNonZero(binaryMat(Rect(0,i,binaryMat.cols,1)));
 	}
 
-	//Find Head and Hips
+	//Find the top of the head : we look for the white pixels on the first line. We assume the median pixel is the top of the head.
+	for (int i = 0 ; i < binaryMat.cols ; ++i){
+
+	}
 	
 	//Find Hands
 	
@@ -189,6 +200,5 @@ void bodyParts (Mat img){
 	 */
 
 	imshow("image bin", binaryMat);
-
 }
 
