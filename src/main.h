@@ -6,9 +6,15 @@
 
 using namespace cv;
 
-void drawRectangle(Point p1, Point p2, Mat img);
+/*********** TYPES ****************/
+typedef std::unordered_map<std::string, cv::Point> pointMap;
+typedef std::unordered_map<std::string, cv::Point>::const_iterator pointIterator;
+
+/********* FUNCTIONS *************/
+void drawRectangle(cv::Point p1, cv::Point p2, cv::Mat img);
 double distanceBetweenTwoPoints(double x, double y, double a, double b);
 cv::Rect bodyDetect(cv::Mat image);
-cv::Mat cropBinary(Mat binaryMat);
-void bodyParts (Mat img);
+cv::Mat cropBinary(cv::Mat binaryMat);
+pointMap bodyParts (cv::Mat img);
+cv::Point findHead (cv::Mat img);
 

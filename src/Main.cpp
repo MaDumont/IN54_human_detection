@@ -33,13 +33,18 @@ int main(int argc, char** argv){
       	  	return -1;
    	}
 
+	// Get image from path
 	Mat img, des_img;
 	Rect bodyRect;
 	img = imread( argv[1], 1 );
 	resize(img, des_img, Size(500, 900), 0, 0, INTER_LINEAR);
 
+	// Processing
 	bodyRect = bodyDetect(des_img);
 	bodyParts(des_img(bodyRect));
+	
+	//imshow("image source", des_img);
+	//imshow("corp image", des_img(maxRect));
 
 	waitKey();
 }
@@ -73,9 +78,6 @@ cv::Rect bodyDetect(cv::Mat image)
 		
 	}
 		
-	//imshow("image source", des_img);
-	//imshow("corp image", des_img(maxRect));
-	
 	return maxRect;
 }
 
@@ -153,9 +155,10 @@ cv::Mat cropBinary(Mat binaryMat){
 	return croppedMat;
 }
 
-void bodyParts (Mat img){
-	//Points : Head, Head Opposite, Left foot, Right foot, Left Hand, Right hand
-	std::unordered_map<std::string, cv::Point> bodyPoints;
+
+pointMap bodyParts (Mat img){
+	//Points : Head, Left foot, Right foot, Left Hand, Right hand, ...
+	pointMap bodyPoints;
 
 	//Grayscale matrix
 	cv::Mat grayscaleMat (img.size(), CV_8U);
@@ -187,10 +190,8 @@ void bodyParts (Mat img){
 	}
 
 	//Find the top of the head : we look for the white pixels on the first line. We assume the median pixel is the top of the head.
-	for (int i = 0 ; i < binaryMat.cols ; ++i){
+	bodyPoints.emplace("Head", findHead(binaryMat));
 
-	}
-	
 	//Find Hands
 	
 	//Find Feet
@@ -199,6 +200,23 @@ void bodyParts (Mat img){
 	 * Ideas : Find maximum, cut image, spine starts from the head and go straight down TODO 
 	 */
 
+
 	imshow("image bin", binaryMat);
+	for (auto& x: bodyPoints) {
+		std::cout << x.first << ": " << x.second << std::endl;
+	}
+	return bodyPoints;
 }
 
+cv::Point findHead(Mat bodyImg){
+	cv::Point head;
+	cv::Mat line, nonZero;
+
+	line = bodyImg(cv::Rect(0,0,bodyImg.cols,1));
+	cv::findNonZero(line, nonZero);
+
+	int median = (int)nonZero.total() / 2;
+	head = nonZero.at<Point>(median);
+
+	return head;
+}
