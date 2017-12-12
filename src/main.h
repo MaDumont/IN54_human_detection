@@ -17,4 +17,8 @@ cv::Rect bodyDetect(cv::Mat image);
 cv::Mat cropBinary(cv::Mat binaryMat);
 pointMap bodyParts (cv::Mat img);
 cv::Point findHead (cv::Mat img);
-
+cv::Point findLeftHand (cv::Mat img);
+cv::Point findRightHand (cv::Mat img);
+cv::Point findLeftFoot (cv::Mat img);
+cv::Point findRightFoot (cv::Mat img);
+cv::Point findWaist (cv::Mat img);

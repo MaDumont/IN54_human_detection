@@ -189,12 +189,9 @@ pointMap bodyParts (Mat img){
 		vertical.at<int>(i,0) = countNonZero(binaryMat(Rect(0,i,binaryMat.cols,1)));
 	}
 
-	//Find the top of the head : we look for the white pixels on the first line. We assume the median pixel is the top of the head.
 	bodyPoints.emplace("Head", findHead(binaryMat));
-
-	//Find Hands
-	
-	//Find Feet
+	bodyPoints.emplace("RightHand", findRightHand(binaryMat));
+	bodyPoints.emplace("LeftHand", findLeftHand(binaryMat));
 	
 	/*
 	 * Ideas : Find maximum, cut image, spine starts from the head and go straight down TODO 
@@ -208,6 +205,7 @@ pointMap bodyParts (Mat img){
 	return bodyPoints;
 }
 
+//Find the top of the head : we look for the white pixels on the first line. We assume the median pixel is the top of the head.
 cv::Point findHead(Mat bodyImg){
 	cv::Point head;
 	cv::Mat line, nonZero;
@@ -219,4 +217,32 @@ cv::Point findHead(Mat bodyImg){
 	head = nonZero.at<Point>(median);
 
 	return head;
+}
+
+//Find the tip of the Left Hand (the right hand actually, but let's call it left hand for the sake of clarity)
+cv::Point findRightHand(Mat bodyImg){
+	cv::Point rightHand;
+	cv::Mat line, nonZero;
+
+	line = bodyImg(cv::Rect(0,0,1,bodyImg.rows));
+	cv::findNonZero(line, nonZero);
+
+	int median = (int)nonZero.total() / 2;
+	rightHand = nonZero.at<Point>(median);
+
+	return rightHand;
+}
+
+//Find the tip of the Right Hand ( ... )
+cv::Point findLeftHand(Mat bodyImg){
+	cv::Point leftHand;
+	cv::Mat line, nonZero;
+
+	line = bodyImg(cv::Rect(bodyImg.cols-1, 0, 1, bodyImg.rows));
+	cv::findNonZero(line, nonZero);
+
+	int median = (int)nonZero.total() / 2;
+	leftHand = nonZero.at<Point>(median);
+
+	return leftHand;
 }
