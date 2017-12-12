@@ -71,6 +71,80 @@ int main(int argc, char** argv )
 	return 0;
 }
 
+cv::Mat cropBinary(Mat binaryMat){
+	Mat horizontal(binaryMat.cols,1,CV_32S);//horizontal histogram
+	horizontal = Scalar::all(0);
+	Mat vertical(binaryMat.rows,1,CV_32S);//vertical histogram	
+	vertical = Scalar::all(0);
+	
+	// Count the number of white (non zero) pixels	
+	for(int i=0;i<binaryMat.cols;i++)
+	{
+		horizontal.at<int>(i,0)=countNonZero(binaryMat(Rect(i,0,1,binaryMat.rows)));
+	}
+				 
+	for(int i=0;i<binaryMat.rows;i++)
+	{
+		vertical.at<int>(i,0) = countNonZero(binaryMat(Rect(0,i,binaryMat.cols,1)));
+	}
+	
+	//crop the image
+	int top, bottom, left, right;
+	//Top
+	if(vertical.at<int>(0,0) == 0){
+		for (int i = 1 ; i < binaryMat.rows ; ++i){
+			if(vertical.at<int>(i-1,0) == 0 && vertical.at<int>(i,0) > 0){
+				top = i;
+				break;
+			}
+		}
+	}
+	else top = 0;
+
+	//Bottom
+	if(vertical.at<int>(binaryMat.rows-1,0) == 0){
+		for (int i = binaryMat.rows-2 ; i > 1 ; --i){
+			if(vertical.at<int>(i+1,0) == 0 && vertical.at<int>(i,0) > 0){
+				bottom = i;
+				break;
+			}
+		}	
+	}
+	else bottom = binaryMat.rows - 1;
+	cout << bottom << endl;
+
+	//Left
+	if(horizontal.at<int>(0,0) == 0){
+		for (int i = 1 ; i < binaryMat.cols ; ++i){
+			if(horizontal.at<int>(i-1,0) == 0 && horizontal.at<int>(i,0) > 0){
+				left = i;
+				break;
+			}
+		}
+	}
+	else left = 0;
+
+	//Right
+	if(horizontal.at<int>(binaryMat.cols-1,0) == 0){
+		for (int i = binaryMat.cols-2 ; i > 1 ; --i){
+			if(horizontal.at<int>(i+1,0) == 0 && horizontal.at<int>(i,0) > 0){
+				right = i;
+				break;
+			}
+		}
+	}
+	else right = binaryMat.cols - 1;
+
+	cout << top << " " << left << " " << bottom << " " << right << endl;
+	//Crop the image and return it
+	int width = right - left;
+	int height = bottom - top;
+	cout << width << " " << height << endl;
+	cv::Rect bodyRect(left, top, width, height);
+	cv::Mat croppedMat = binaryMat(bodyRect);
+	return croppedMat;
+}
+
 void bodyParts (Mat img){
 	//Points : Head, Head Opposite, Left foot, Right foot, Left Hand, Right hand
 	std::unordered_map<std::string, cv::Point> bodyPoints;
@@ -85,6 +159,8 @@ void bodyParts (Mat img){
 	cv::threshold(grayscaleMat, binaryMat, 100, 255, cv::THRESH_BINARY);
 	//Reverse the colors
 	bitwise_not (binaryMat, binaryMat);
+
+	binaryMat = cropBinary(binaryMat);
 	
 	Mat horizontal(binaryMat.cols,1,CV_32S);//horizontal histogram
 	horizontal = Scalar::all(0);
@@ -102,9 +178,17 @@ void bodyParts (Mat img){
 		vertical.at<int>(i,0) = countNonZero(binaryMat(Rect(0,i,binaryMat.cols,1)));
 	}
 
+	//Find Head and Hips
 	
+	//Find Hands
+	
+	//Find Feet
+	
+	/*
+	 * Ideas : Find maximum, cut image, spine starts from the head and go straight down TODO 
+	 */
 
 	imshow("image bin", binaryMat);
 
-	cout << horizontal << endl << endl;
 }
+
