@@ -41,7 +41,7 @@ int main(int argc, char** argv){
 
 	// Processing
 	bodyRect = bodyDetect(des_img);
-	bodyParts(des_img(bodyRect));
+	bodyParts(des_img);
 	
 	//imshow("image source", des_img);
 	//imshow("corp image", des_img(maxRect));
@@ -49,6 +49,9 @@ int main(int argc, char** argv){
 	waitKey();
 }
 
+/*
+ * Extract a rectangle containing the body
+ */
 cv::Rect bodyDetect(cv::Mat image)
 {
 	Mat img;
@@ -60,7 +63,6 @@ cv::Rect bodyDetect(cv::Mat image)
 	vector<Rect> found, found_filtered;
 	hog.detectMultiScale(img, found, 0, Size(4, 4), Size(8, 8), 1.05, 2);
 		
-	cout << "test" << endl;
 	size_t i, j;
 	double maxDistance = 0;
 	Rect maxRect;
@@ -81,22 +83,38 @@ cv::Rect bodyDetect(cv::Mat image)
 	return maxRect;
 }
 
-cv::Mat cropBinary(Mat binaryMat){
-	Mat horizontal(binaryMat.cols,1,CV_32S);//horizontal histogram
+cv::Mat horizontalProj(Mat binaryMat){
+	Mat horizontal(binaryMat.cols, 1, CV_32S);
 	horizontal = Scalar::all(0);
-	Mat vertical(binaryMat.rows,1,CV_32S);//vertical histogram	
-	vertical = Scalar::all(0);
-	
+
 	// Count the number of white (non zero) pixels	
 	for(int i=0;i<binaryMat.cols;i++)
 	{
 		horizontal.at<int>(i,0)=countNonZero(binaryMat(Rect(i,0,1,binaryMat.rows)));
 	}
-				 
+
+	return horizontal;
+}
+
+cv::Mat verticalProj(Mat binaryMat){
+	Mat vertical(binaryMat.rows, 1, CV_32S);
+	vertical = Scalar::all(0);
+
 	for(int i=0;i<binaryMat.rows;i++)
 	{
 		vertical.at<int>(i,0) = countNonZero(binaryMat(Rect(0,i,binaryMat.cols,1)));
-	}
+	}	
+
+	return vertical;
+}
+
+/*
+ * Input : a binary image of the body
+ * Output : a cropped binary image (removal of the unnecessary lines and columns containing only black pixels)
+ */
+cv::Mat cropBinary(Mat binaryMat){
+	Mat horizontal = horizontalProj(binaryMat);
+	Mat vertical = verticalProj(binaryMat);
 	
 	//crop the image
 	int top, bottom, left, right;
@@ -121,7 +139,6 @@ cv::Mat cropBinary(Mat binaryMat){
 		}	
 	}
 	else bottom = binaryMat.rows - 1;
-	cout << bottom << endl;
 
 	//Left
 	if(horizontal.at<int>(0,0) == 0){
@@ -145,21 +162,21 @@ cv::Mat cropBinary(Mat binaryMat){
 	}
 	else right = binaryMat.cols - 1;
 
-	cout << top << " " << left << " " << bottom << " " << right << endl;
-	//Crop the image and return it
+	//Crop the image
 	int width = right - left;
 	int height = bottom - top;
-	cout << width << " " << height << endl;
 	cv::Rect bodyRect(left, top, width, height);
 	cv::Mat croppedMat = binaryMat(bodyRect);
 	return croppedMat;
 }
 
-
+/*
+ * Input : a cropped binary image
+ * Output : a hashmap containing all the points of the body parts
+ */
 pointMap bodyParts (Mat img){
 	//Points : Head, Left foot, Right foot, Left Hand, Right hand, ...
 	pointMap bodyPoints;
-
 	//Grayscale matrix
 	cv::Mat grayscaleMat (img.size(), CV_8U);
 	//Convert BGR to Gray
@@ -173,35 +190,23 @@ pointMap bodyParts (Mat img){
 
 	binaryMat = cropBinary(binaryMat);
 	
-	Mat horizontal(binaryMat.cols,1,CV_32S);//horizontal histogram
-	horizontal = Scalar::all(0);
-	Mat vertical(binaryMat.rows,1,CV_32S);//vertical histogram	
-	vertical = Scalar::all(0);
-	
-	// Count the number of white (non zero) pixels	
-	for(int i=0;i<binaryMat.cols;i++)
-	{
-		horizontal.at<int>(i,0)=countNonZero(binaryMat(Rect(i,0,1,binaryMat.rows)));
-	}
-				 
-	for(int i=0;i<binaryMat.rows;i++)
-	{
-		vertical.at<int>(i,0) = countNonZero(binaryMat(Rect(0,i,binaryMat.cols,1)));
-	}
-
 	bodyPoints.emplace("Head", findHead(binaryMat));
-	bodyPoints.emplace("RightHand", findRightHand(binaryMat));
-	bodyPoints.emplace("LeftHand", findLeftHand(binaryMat));
-	
-	/*
-	 * Ideas : Find maximum, cut image, spine starts from the head and go straight down TODO 
-	 */
+	bodyPoints.emplace("RightHand", findHand(binaryMat, false));
+	bodyPoints.emplace("LeftHand", findHand(binaryMat, true));
+	bodyPoints.emplace("RightFoot", findFoot(binaryMat, false));
+	bodyPoints.emplace("LeftFoot", findFoot(binaryMat, true));
+	bodyPoints.emplace("RightShoulder", findShoulder(binaryMat, false));
+	bodyPoints.emplace("LeftShoulder", findShoulder(binaryMat, true));
+	int bodyCenter = (int)bodyPoints.find("Head")->second.x; 
+	bodyPoints.emplace("RightHip", findHip(binaryMat, bodyCenter, false));
+	bodyPoints.emplace("LeftHip", findHip(binaryMat, bodyCenter, true));
 
-
-	imshow("image bin", binaryMat);
+	//Display the coordinates of the points and draw a circle around them
 	for (auto& x: bodyPoints) {
 		std::cout << x.first << ": " << x.second << std::endl;
+		circle(binaryMat, x.second, 5, Scalar(0,0,255), 4);
 	}
+	imshow("image bin", binaryMat);
 	return bodyPoints;
 }
 
@@ -219,30 +224,126 @@ cv::Point findHead(Mat bodyImg){
 	return head;
 }
 
-//Find the tip of the Left Hand (the right hand actually, but let's call it left hand for the sake of clarity)
-cv::Point findRightHand(Mat bodyImg){
-	cv::Point rightHand;
-	cv::Mat line, nonZero;
+/*
+ * Find the extremity of the hands
+ * side : 0 for left hand
+ * 	  1 for right hand
+ * Output : the point corresponding to the extremity of a hand
+ */
+cv::Point findHand(Mat bodyImg, bool side){
+	cv::Point hand;
+	cv::Mat searchSpace, nonZero;
+	int colNumber;
 
-	line = bodyImg(cv::Rect(0,0,1,bodyImg.rows));
-	cv::findNonZero(line, nonZero);
+	if(side == false) colNumber = 0; // We look for the left hand (the right hand actually, but let's call it left hand for the sake of clarity)
+	else if (side == true) colNumber = bodyImg.cols-1; // We look for the right hand
 
+	searchSpace = bodyImg(cv::Rect(colNumber,0,1,bodyImg.rows));
+	cv::findNonZero(searchSpace, nonZero);
+	
 	int median = (int)nonZero.total() / 2;
-	rightHand = nonZero.at<Point>(median);
+	hand = nonZero.at<Point>(median);
+	
+	//Conversion to match the coordinates of the original image
+	if(side == true) hand.x = bodyImg.cols-1;
 
-	return rightHand;
+	return hand;
 }
 
-//Find the tip of the Right Hand ( ... )
-cv::Point findLeftHand(Mat bodyImg){
-	cv::Point leftHand;
-	cv::Mat line, nonZero;
+/*
+ * Find the extremity of the feet
+ * Assumption : there should be enough space between the feet
+ * side : 0 for left foot
+ * 	  1 for right foot
+ * Output : the point corresponding to the extremity of a foot
+ */
+cv::Point findFoot(Mat bodyImg, bool side){
+	cv::Point foot;
+	cv::Mat searchSpace, correctedSearchSpace, nonZero;
+	int colNumber;
 
-	line = bodyImg(cv::Rect(bodyImg.cols-1, 0, 1, bodyImg.rows));
-	cv::findNonZero(line, nonZero);
+	if(side == false) colNumber = 0;
+	else if(side == true) colNumber = (int)(bodyImg.cols-1)/2; //We cut the image vertically
+
+	searchSpace = bodyImg(cv::Rect(colNumber, bodyImg.rows-1, (bodyImg.cols-1)/2, 1));
+	cv::findNonZero(searchSpace, nonZero);
 
 	int median = (int)nonZero.total() / 2;
-	leftHand = nonZero.at<Point>(median);
+	foot = nonZero.at<Point>(median);
 
-	return leftHand;
+	//Conversion to match the coordinates of the original image
+	foot.y = bodyImg.rows-1;
+	if(side == true) foot.x = foot.x + (int)(bodyImg.cols-1)/2;
+
+	return foot;
+}
+
+/*
+ * Find the shoulders
+ * side : 0 for left shoulder
+ * 	  1 for right shoulder
+ * Output : the point corresponding to a shoulder
+ */
+cv::Point findShoulder(Mat bodyImg, bool side){
+	cv::Point shoulder;
+	cv::Mat searchSpace, nonZero;
+
+	cv::Mat horizontal = horizontalProj(bodyImg);
+	cv::Mat vertical = verticalProj(bodyImg);
+
+
+	int shouldersLine = 0;
+	int spaceBetween = (int)bodyImg.rows / 30; //Estimation of the number of rows between the shoulders and the neck/head
+	int startingRow = 2*spaceBetween;
+
+	// Find the x coordinates of the shoulders
+	for (int i = startingRow ; i < bodyImg.rows ; ++i){
+		if(vertical.at<int>(i,0) > 2 * vertical.at<int>(i-spaceBetween,0)){
+			shouldersLine = i;
+			break;
+		}
+	}
+	
+	searchSpace = bodyImg(cv::Rect(0, shouldersLine, bodyImg.cols, 1));
+
+	// Find the y coordinate of the requested shoulder
+	cv::findNonZero(searchSpace, nonZero);
+	if(side == false) shoulder = nonZero.at<Point>(0);
+	if(side == true) shoulder = nonZero.at<Point>(nonZero.rows-1);
+	
+	shoulder.y = shouldersLine;	
+	return shoulder;	
+}
+
+/*
+ * Find the hip
+ * side : 0 for left hip
+ * 	  1 for right hip
+ * Output : the point corresponding to a hip
+ */
+cv::Point findHip(Mat bodyImg, int bodyCenter, bool side){
+	cv::Point hip;
+	cv::Mat searchSpace, nonZero;
+	int hipPos;
+
+	searchSpace = bodyImg(cv::Rect(bodyCenter, 0, 1, bodyImg.rows));
+
+	// Find the x coordinate of the hips
+	cv::Mat vertical = verticalProj(searchSpace);
+	for (int i = 2 ; i < bodyImg.rows ; ++i){
+		if(vertical.at<int>(i,0) == 0 && vertical.at<int>(i-1,0) > 0){
+			hipPos = i;
+			break;
+		}
+	}
+
+	// Find the y coordinate of the requested hip
+	searchSpace = bodyImg(cv::Rect(0, hipPos, bodyImg.cols, 1));
+	cv::findNonZero(searchSpace, nonZero);
+	int div = (int)nonZero.total() / 4;
+	if (side == false) hip = nonZero.at<Point>(div);
+	if (side == true) hip = nonZero.at<Point>(3*div);
+	hip.y = hipPos;	
+	
+	return hip;
 }
