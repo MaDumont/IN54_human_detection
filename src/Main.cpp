@@ -41,8 +41,9 @@ int main(int argc, char** argv){
 
 	// Processing
 	bodyRect = bodyDetect(des_img);
-	bodyParts(des_img);
-	
+	//bodyParts(des_img); USE THIS IF THE INPUT IS A BINARY IMAGE
+	bodyParts(des_img(bodyRect));
+
 	//imshow("image source", des_img);
 	//imshow("corp image", des_img(maxRect));
 
@@ -83,6 +84,9 @@ cv::Rect bodyDetect(cv::Mat image)
 	return maxRect;
 }
 
+/*
+ * Output : The horizontal histogram of a binary image
+ */
 cv::Mat horizontalProj(Mat binaryMat){
 	Mat horizontal(binaryMat.cols, 1, CV_32S);
 	horizontal = Scalar::all(0);
@@ -96,6 +100,9 @@ cv::Mat horizontalProj(Mat binaryMat){
 	return horizontal;
 }
 
+/*
+ * Output : the vertical histogram of a binary image
+ */
 cv::Mat verticalProj(Mat binaryMat){
 	Mat vertical(binaryMat.rows, 1, CV_32S);
 	vertical = Scalar::all(0);
