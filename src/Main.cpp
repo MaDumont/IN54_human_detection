@@ -40,9 +40,9 @@ int main(int argc, char** argv){
 	resize(img, des_img, Size(500, 900), 0, 0, INTER_LINEAR);
 
 	// Processing
-	bodyRect = bodyDetect(des_img);
-	//bodyParts(des_img); USE THIS IF THE INPUT IS A BINARY IMAGE
-	bodyParts(des_img(bodyRect));
+	//bodyRect = bodyDetect(des_img);
+	bodyParts(des_img); //USE THIS IF THE INPUT IS A BINARY IMAGE
+	//bodyParts(des_img(bodyRect));
 
 	//imshow("image source", des_img);
 	//imshow("corp image", des_img(maxRect));
@@ -116,6 +116,41 @@ cv::Mat verticalProj(Mat binaryMat){
 }
 
 /*
+ * Compute an opening on the binaryMat
+ */
+cv::Mat opening(Mat binaryMat){
+	Mat se1 = getStructuringElement(MORPH_RECT, Size(2, 2));
+	
+	Mat mask;
+	morphologyEx(binaryMat, mask, MORPH_OPEN, se1);
+	
+	Mat output(binaryMat.rows, binaryMat.cols, CV_32S);
+	output = Scalar::all(0);
+	output = binaryMat.clone();
+	output.setTo(Scalar(0), mask == 0);
+	
+	return output;
+}
+
+/*
+ * Compute a closing on the binaryMat
+ */
+cv::Mat closing(Mat binaryMat){
+	//Define the structuring element
+	Mat se1 = getStructuringElement(MORPH_RECT, Size(5, 5));
+
+	Mat mask;
+	morphologyEx(binaryMat, mask, MORPH_CLOSE, se1);
+	
+	Mat output(binaryMat.rows, binaryMat.cols, CV_32S);
+	output = Scalar::all(0);
+	output = binaryMat.clone();
+	output.setTo(Scalar(0), mask == 0);
+	
+	return output;
+}
+
+/*
  * Input : a binary image of the body
  * Output : a cropped binary image (removal of the unnecessary lines and columns containing only black pixels)
  */
@@ -170,8 +205,8 @@ cv::Mat cropBinary(Mat binaryMat){
 	else right = binaryMat.cols - 1;
 
 	//Crop the image
-	int width = right - left;
-	int height = bottom - top;
+	int width = right - left + 1;
+	int height = bottom - top ;
 	cv::Rect bodyRect(left, top, width, height);
 	cv::Mat croppedMat = binaryMat(bodyRect);
 	return croppedMat;
@@ -195,8 +230,15 @@ pointMap bodyParts (Mat img){
 	//Reverse the colors
 	bitwise_not (binaryMat, binaryMat);
 
+	//Crop the image
 	binaryMat = cropBinary(binaryMat);
-	
+
+	//Improve the image quality
+	binaryMat = closing(binaryMat);
+	binaryMat = opening(binaryMat);
+	binaryMat = cropBinary(binaryMat);
+
+	cout << "oizfaizpgr" <<  endl;
 	bodyPoints.emplace("Head", findHead(binaryMat));
 	bodyPoints.emplace("RightHand", findHand(binaryMat, false));
 	bodyPoints.emplace("LeftHand", findHand(binaryMat, true));
@@ -207,7 +249,7 @@ pointMap bodyParts (Mat img){
 	int bodyCenter = (int)bodyPoints.find("Head")->second.x; 
 	bodyPoints.emplace("RightHip", findHip(binaryMat, bodyCenter, false));
 	bodyPoints.emplace("LeftHip", findHip(binaryMat, bodyCenter, true));
-
+	
 	//Display the coordinates of the points and draw a circle around them
 	for (auto& x: bodyPoints) {
 		std::cout << x.first << ": " << x.second << std::endl;
@@ -274,7 +316,7 @@ cv::Point findFoot(Mat bodyImg, bool side){
 
 	searchSpace = bodyImg(cv::Rect(colNumber, bodyImg.rows-1, (bodyImg.cols-1)/2, 1));
 	cv::findNonZero(searchSpace, nonZero);
-
+	
 	int median = (int)nonZero.total() / 2;
 	foot = nonZero.at<Point>(median);
 

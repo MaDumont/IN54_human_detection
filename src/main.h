@@ -18,6 +18,8 @@ cv::Mat cropBinary(cv::Mat binaryMat);
 pointMap bodyParts (cv::Mat img);
 cv::Mat horizontalProj(cv::Mat binaryMat);
 cv::Mat verticalProj(cv::Mat binaryMat);
+cv::Mat opening(cv::Mat binaryMat);
+cv::Mat closing(cv::Mat binaryMat);
 cv::Point findHead (cv::Mat img);
 cv::Point findHand (cv::Mat img, bool side);
 cv::Point findFoot (cv::Mat img, bool side);
