@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
      I =  imread(argv[1]);
      Mat blank(I.size(),CV_8U, Scalar(0xFF));
 
-     resize(I, des_img,  Size(), 0.50, 0.50);
+     resize(I, des_img,  Size(), 0.50,0.50);
 
 
 
@@ -89,10 +89,28 @@ int main(int argc, char* argv[])
 		
     rectContourHumain = des_img(maxRect);
 
+    int cols = rectContourHumain.cols;
+    int rows = rectContourHumain.rows;
+
+    Point p1 = Point(2*cols/3,5); 
+    Point p2 = Point(2*cols/3+cols/3-5,rows/5);
+    drawRectangle(p1,p2,rectContourHumain);
+    imshow("contour", rectContourHumain);
+
+
+
+
     // Create markers image
      Mat markers(rectContourHumain.size(),CV_8U, Scalar(-1));
     //Rect(topleftcornerX, topleftcornerY, width, height);
-    //top rectangle
+
+    //HOLD LEFT TO HEAD
+    markers(Rect(5,5,cols/3,rows/5)) = Scalar::all(1);
+
+    //HOLD RIGHT TO HEAD
+    markers(Rect(2*cols/3,5,cols/3-5,rows/5)) = Scalar::all(1);
+
+    //left rectangle
     markers(Rect(0,0,rectContourHumain.cols, 5)) = Scalar::all(1);
     //bottom rectangle
     markers(Rect(0,rectContourHumain.rows-5,rectContourHumain.cols, 5)) = Scalar::all(1);
@@ -106,6 +124,32 @@ int main(int argc, char* argv[])
     int centreH = rectContourHumain.rows/4;
     markers(Rect((rectContourHumain.cols/2)-(centreW/2),(rectContourHumain.rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
     markers.convertTo(markers,CV_BGR2GRAY);
+
+
+
+
+/*  CE QUI ETAIT DONNE COMME EXAMPLE
+	    // Create markers image
+	     Mat markers(rectContourHumain.size(),CV_8U, Scalar(-1));
+	    //Rect(topleftcornerX, topleftcornerY, width, height);
+
+	    //left rectangle
+	    markers(Rect(0,0,rectContourHumain.cols, 5)) = Scalar::all(1);
+	    //bottom rectangle
+	    markers(Rect(0,rectContourHumain.rows-5,rectContourHumain.cols, 5)) = Scalar::all(1);
+	    //left rectangle
+	    markers(Rect(0,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	    //right rectangle
+	    markers(Rect(rectContourHumain.cols-5,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	    //centre rectangle
+
+	    int centreW = rectContourHumain.cols/4;
+	    int centreH = rectContourHumain.rows/4;
+	    markers(Rect((rectContourHumain.cols/2)-(centreW/2),(rectContourHumain.rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
+	    markers.convertTo(markers,CV_BGR2GRAY);
+*/
+
+
 //    imshow("markers", markers);
 
     //Create watershed segmentation object
@@ -118,11 +162,18 @@ int main(int argc, char* argv[])
     bitwise_and(rectContourHumain, rectContourHumain, dest, mask);
     dest.convertTo(dest,CV_8U);
 
-    cvtColor( dest_gray, dest, COLOR_BGR2GRAY );
 
-    threshold(dest_gray, img_bw, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-    imshow("final_result", dest);
-    waitKey(0);
+
+
+	//Le probleme est ici
+
+
+    //CV_8UcvtColor( dest_gray, dest, COLOR_BGR2GRAY );
+
+//    threshold(dest_gray, img_bw, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+
+
+    //imshow("final_result", dest);
 
 	// Processing
 //	bodyRect = bodyDetect(des_img);
@@ -131,6 +182,8 @@ int main(int argc, char* argv[])
 
 	//imshow("corp image", des_img(maxRect));
 
+
+    waitKey(0);
     return 0;
 }
 
