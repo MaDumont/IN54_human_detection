@@ -5,11 +5,17 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <cmath>
 
 #include "main.h"
 
 using namespace cv;
 using namespace std;
+
+//Global var
+Mat binaryCorpImage;
+int scale;
+float bodyLength;
 
 void drawRectangle(Point p1, Point p2, Mat img){
 
@@ -36,18 +42,102 @@ int main(int argc, char** argv){
 	// Get image from path
 	Mat img, des_img;
 	Rect bodyRect;
+	bodyLength = 180.0f;
 	img = imread( argv[1], 1 );
 	resize(img, des_img, Size(500, 900), 0, 0, INTER_LINEAR);
 
 	// Processing
 	//bodyRect = bodyDetect(des_img);
-	bodyParts(des_img); //USE THIS IF THE INPUT IS A BINARY IMAGE
+	//bodyParts(des_img); //USE THIS IF THE INPUT IS A BINARY IMAGE
 	//bodyParts(des_img(bodyRect));
 
 	//imshow("image source", des_img);
 	//imshow("corp image", des_img(maxRect));
 
+	measureBodyParts(des_img, bodyParts(des_img));
+
 	waitKey();
+}
+
+/*
+ * Input : two points
+ * Output : median of the two points
+ */
+Point median(Point a, Point b) {
+	Point ret;
+	ret.x = (a.x + b.x) / 2;
+	ret.y = (a.y + b.y) / 2;
+	return ret;
+}
+
+/*
+ * Draw the distances between two points
+ */
+void draw(Mat img,double distance,Point p1,Point p2) 
+{	
+	std::ostringstream output;
+	std::string distance_in_string;
+	distance_in_string = (dynamic_cast< std::ostringstream*>(&(output << distance <<std::endl)))->str();
+	cv::line(img, p1, p2, (20, 60, 50), 5);
+	cv::putText(img, distance_in_string, median(p1, p2), cv::FONT_HERSHEY_SIMPLEX, 0.5, (20, 100, 100), 2, CV_AA);
+
+}
+
+/*
+ * get scale number of pixel for 1 cm
+ */
+int getImageScale(Mat img,Point p1,Point p2)
+{
+	double d = distanceBetweenTwoPoints(p1.x, p1.y, p2.x, p2.y);
+	return (int)(d / bodyLength);
+}
+
+/*
+ * mesure body shapes
+ */
+void measureBodyParts(Mat img,pointMap bodyShapes) 
+{	
+	std::unordered_map<std::string, Point>::iterator head;
+	std::unordered_map<std::string, Point>::iterator shoulderL;
+	std::unordered_map<std::string, Point>::iterator shoulderR;
+	std::unordered_map<std::string, Point>::iterator handL;
+	std::unordered_map<std::string, Point>::iterator handR;
+	std::unordered_map<std::string, Point>::iterator footR;
+	std::unordered_map<std::string, Point>::iterator footL;
+	std::unordered_map<std::string, Point>::iterator hipL;
+	std::unordered_map<std::string, Point>::iterator hipR;
+
+	head = bodyShapes.find("Head");
+	handR = bodyShapes.find("RightHand");
+	handL = bodyShapes.find("LeftHand");
+	shoulderL = bodyShapes.find("LeftShoulder");
+	shoulderR = bodyShapes.find("RightShoulder");
+	footL = bodyShapes.find("LeftFoot");
+	footR = bodyShapes.find("RightFoot");
+	hipL = bodyShapes.find("LeftHip");
+	hipR = bodyShapes.find("RightHip");
+
+	double lengthLeftArm = distanceBetweenTwoPoints(handL->second.x, handL->second.y, shoulderL->second.x, shoulderL->second.y)/scale;
+	double lengthRightArm = distanceBetweenTwoPoints(handR->second.x, handR->second.y, shoulderR->second.x, shoulderR->second.y)/scale;
+	double lengthLeftFoot = distanceBetweenTwoPoints(footL->second.x, footL->second.y, hipL->second.x, hipL->second.y) / scale;
+	double lengthRightFoot = distanceBetweenTwoPoints(footR->second.x, footR->second.y, hipR->second.x, hipR->second.y) / scale;
+
+	draw(binaryCorpImage, lengthLeftArm, handL->second, shoulderL->second);
+	draw(binaryCorpImage, lengthRightArm, handR->second, shoulderR->second);
+	draw(binaryCorpImage, lengthLeftFoot, footR->second, hipR->second);
+	draw(binaryCorpImage, lengthLeftFoot, footL->second, hipL->second);
+	
+	int block = img.rows / 8;
+	float anthropometryArm = block * 3.5;
+	float anthropometryfoot = block * 5;
+	
+	cout << "length Left Arm : " << lengthLeftArm << " cm ; taux 'd'erreur = " << abs((anthropometryArm - lengthLeftArm)/ anthropometryArm )/100<< endl;
+	cout << "length Right Arm : " << lengthRightArm << " cm; taux 'd'erreur = " << abs((anthropometryArm - lengthRightArm) / anthropometryArm) / 100 << endl;
+	cout << "length Left Foot : " << lengthLeftFoot << " cm; taux 'd'erreur = " << abs((anthropometryfoot - lengthLeftFoot) / anthropometryfoot) / 100 << endl;
+	cout << "length Right Foot : " << lengthRightFoot << " cm; taux 'd'erreur = " << abs((anthropometryfoot - lengthRightFoot) / anthropometryfoot) / 100 << endl;
+
+	imshow("binary corp image after mesure", binaryCorpImage);
+
 }
 
 /*
@@ -154,7 +244,7 @@ cv::Mat closing(Mat binaryMat){
  * Input : a binary image of the body
  * Output : a cropped binary image (removal of the unnecessary lines and columns containing only black pixels)
  */
-cv::Mat cropBinary(Mat binaryMat){
+cv::Rect cropBinary(Mat binaryMat){
 	Mat horizontal = horizontalProj(binaryMat);
 	Mat vertical = verticalProj(binaryMat);
 	
@@ -208,8 +298,8 @@ cv::Mat cropBinary(Mat binaryMat){
 	int width = right - left + 1;
 	int height = bottom - top ;
 	cv::Rect bodyRect(left, top, width, height);
-	cv::Mat croppedMat = binaryMat(bodyRect);
-	return croppedMat;
+	//cv::Mat croppedMat = binaryMat(bodyRect);
+	return bodyRect;
 }
 
 /*
@@ -230,15 +320,13 @@ pointMap bodyParts (Mat img){
 	//Reverse the colors
 	bitwise_not (binaryMat, binaryMat);
 
-	//Crop the image
-	binaryMat = cropBinary(binaryMat);
-
 	//Improve the image quality
 	binaryMat = closing(binaryMat);
 	binaryMat = opening(binaryMat);
-	binaryMat = cropBinary(binaryMat);
+	cv::Rect cropRect = cropBinary(binaryMat);
+	binaryMat = binaryMat(cropRect);
+	cv::Mat original = img(cropRect);
 
-	cout << "oizfaizpgr" <<  endl;
 	bodyPoints.emplace("Head", findHead(binaryMat));
 	bodyPoints.emplace("RightHand", findHand(binaryMat, false));
 	bodyPoints.emplace("LeftHand", findHand(binaryMat, true));
@@ -249,13 +337,21 @@ pointMap bodyParts (Mat img){
 	int bodyCenter = (int)bodyPoints.find("Head")->second.x; 
 	bodyPoints.emplace("RightHip", findHip(binaryMat, bodyCenter, false));
 	bodyPoints.emplace("LeftHip", findHip(binaryMat, bodyCenter, true));
-	
+
+	//get the scale en cm of the image //khaled
+	scale = getImageScale(binaryMat, bodyPoints.find("Head")->second, median(bodyPoints.find("LeftFoot")->second, bodyPoints.find("RightFoot")->second));
+	cout << " scale in cm = " << scale << endl;
+	//***********************************************************************	
+
 	//Display the coordinates of the points and draw a circle around them
 	for (auto& x: bodyPoints) {
 		std::cout << x.first << ": " << x.second << std::endl;
 		circle(binaryMat, x.second, 5, Scalar(0,0,255), 4);
 	}
-	imshow("image bin", binaryMat);
+	imshow("image bin", original);
+
+	cv::cvtColor(binaryMat, binaryCorpImage, CV_GRAY2RGB);
+	
 	return bodyPoints;
 }
 
