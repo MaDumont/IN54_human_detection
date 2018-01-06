@@ -7,6 +7,11 @@
 #include <string>
 #include <cmath>
 
+#include <opencv2/core/utility.hpp>
+#include "opencv2/core.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
+
 #include "main.h"
 
 using namespace cv;
@@ -16,6 +21,24 @@ using namespace std;
 Mat binaryCorpImage;
 int scale;
 float bodyLength;
+
+
+class WatershedSegmenter{
+private:
+     Mat markers;
+public:
+    void setMarkers( Mat& markerImage)
+    {
+        markerImage.convertTo(markers, CV_32S);
+    }
+
+     Mat process( Mat &image)
+    {
+         watershed(image, markers);
+        markers.convertTo(markers,CV_8U);
+        return markers;
+    }
+};
 
 void drawRectangle(Point p1, Point p2, Mat img){
 
@@ -40,21 +63,25 @@ int main(int argc, char** argv){
    	}
 
 	// Get image from path
-	Mat img, des_img;
+	Mat img, des_img, bodyEdge;
 	Rect bodyRect;
 	bodyLength = 180.0f;
 	img = imread( argv[1], 1 );
 	resize(img, des_img, Size(500, 900), 0, 0, INTER_LINEAR);
 
 	// Processing
-	//bodyRect = bodyDetect(des_img);
+	bodyRect = bodyDetect(des_img);
+
+	bodyEdge = edgeDetect(des_img(bodyRect));
+
 	//bodyParts(des_img); //USE THIS IF THE INPUT IS A BINARY IMAGE
 	//bodyParts(des_img(bodyRect));
 
 	//imshow("image source", des_img);
 	//imshow("corp image", des_img(maxRect));
 
-	measureBodyParts(des_img, bodyParts(des_img));
+//	measureBodyParts(des_img, bodyParts(des_img));
+
 
 	waitKey();
 }
@@ -174,6 +201,90 @@ cv::Rect bodyDetect(cv::Mat image)
 	return maxRect;
 }
 
+
+/*
+	extract the edge of the human body
+*/
+cv::Mat edgeDetect(cv::Mat rectContourHumain){
+
+
+	Mat dest;
+
+
+/*
+	int cols = rectContourHumain.cols;
+	int rows = rectContourHumain.rows;
+
+	Point p1 = Point(2*cols/3,5); 
+	Point p2 = Point(2*cols/3+cols/3-5,rows/5);
+	drawRectangle(p1,p2,rectContourHumain);
+	imshow("contour", rectContourHumain);
+
+
+
+	// Create markers image
+	Mat markers(rectContourHumain.size(),CV_8U, Scalar(-1));
+	//Rect(topleftcornerX, topleftcornerY, width, height);
+
+	//HOLD LEFT TO HEAD
+	markers(Rect(5,5,cols/3,rows/5)) = Scalar::all(1);
+
+	//HOLD RIGHT TO HEAD
+	markers(Rect(2*cols/3,5,cols/3-5,rows/5)) = Scalar::all(1);
+
+	//left rectangle
+	markers(Rect(0,0,rectContourHumain.cols, 5)) = Scalar::all(1);
+	//bottom rectangle
+	markers(Rect(0,rectContourHumain.rows-5,rectContourHumain.cols, 5)) = Scalar::all(1);
+	//left rectangle
+	markers(Rect(0,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	//right rectangle
+	markers(Rect(rectContourHumain.cols-5,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	//centre rectangle
+
+	int centreW = rectContourHumain.cols/4;
+	int centreH = rectContourHumain.rows/4;
+	markers(Rect((rectContourHumain.cols/2)-(centreW/2),(rectContourHumain.rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
+	markers.convertTo(markers,CV_BGR2GRAY);
+
+
+*/
+
+/*  CE QUI ETAIT DONNE COMME EXAMPLE */
+	    // Create markers image
+	     Mat markers(rectContourHumain.size(),CV_8U, Scalar(-1));
+	    //Rect(topleftcornerX, topleftcornerY, width, height);
+
+	    //left rectangle
+	    markers(Rect(0,0,rectContourHumain.cols, 5)) = Scalar::all(1);
+	    //bottom rectangle
+	    markers(Rect(0,rectContourHumain.rows-5,rectContourHumain.cols, 5)) = Scalar::all(1);
+	    //left rectangle
+	    markers(Rect(0,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	    //right rectangle
+	    markers(Rect(rectContourHumain.cols-5,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	    //centre rectangle
+
+	    int centreW = rectContourHumain.cols/4;
+	    int centreH = rectContourHumain.rows/4;
+	    markers(Rect((rectContourHumain.cols/2)-(centreW/2),(rectContourHumain.rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
+	    markers.convertTo(markers,CV_BGR2GRAY);
+/**/
+
+
+
+	//Create watershed segmentation object
+	WatershedSegmenter segmenter;
+	segmenter.setMarkers(markers);
+	Mat wshedMask = segmenter.process(rectContourHumain);
+	Mat mask;
+	convertScaleAbs(wshedMask, mask, 1, 0);
+	double thresh = threshold(mask, mask, 1, 255, THRESH_BINARY);
+	bitwise_and(rectContourHumain, rectContourHumain, dest, mask);
+	dest.convertTo(dest,CV_8U);
+
+	return dest;
+}
 /*
  * Output : The horizontal histogram of a binary image
  */
