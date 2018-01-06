@@ -211,14 +211,10 @@ cv::Mat edgeDetect(cv::Mat rectContourHumain){
 	Mat dest;
 
 
-/*
+
 	int cols = rectContourHumain.cols;
 	int rows = rectContourHumain.rows;
 
-	Point p1 = Point(2*cols/3,5); 
-	Point p2 = Point(2*cols/3+cols/3-5,rows/5);
-	drawRectangle(p1,p2,rectContourHumain);
-	imshow("contour", rectContourHumain);
 
 
 
@@ -233,43 +229,23 @@ cv::Mat edgeDetect(cv::Mat rectContourHumain){
 	markers(Rect(2*cols/3,5,cols/3-5,rows/5)) = Scalar::all(1);
 
 	//left rectangle
-	markers(Rect(0,0,rectContourHumain.cols, 5)) = Scalar::all(1);
+	markers(Rect(0,0,cols, 5)) = Scalar::all(1);
 	//bottom rectangle
-	markers(Rect(0,rectContourHumain.rows-5,rectContourHumain.cols, 5)) = Scalar::all(1);
+	markers(Rect(0,rows-5,cols, 5)) = Scalar::all(1);
 	//left rectangle
-	markers(Rect(0,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	markers(Rect(0,0,5,rows)) = Scalar::all(1);
 	//right rectangle
-	markers(Rect(rectContourHumain.cols-5,0,5,rectContourHumain.rows)) = Scalar::all(1);
+	markers(Rect(cols-5,0,5,rows)) = Scalar::all(1);
 	//centre rectangle
 
-	int centreW = rectContourHumain.cols/4;
-	int centreH = rectContourHumain.rows/4;
-	markers(Rect((rectContourHumain.cols/2)-(centreW/2),(rectContourHumain.rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
+	int centreW = cols/2;
+	int centreH = 0.75*rows;
+	markers(Rect((cols/2)-(centreW/2),(rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
 	markers.convertTo(markers,CV_BGR2GRAY);
 
-
-*/
-
-/*  CE QUI ETAIT DONNE COMME EXAMPLE */
-	    // Create markers image
-	     Mat markers(rectContourHumain.size(),CV_8U, Scalar(-1));
-	    //Rect(topleftcornerX, topleftcornerY, width, height);
-
-	    //left rectangle
-	    markers(Rect(0,0,rectContourHumain.cols, 5)) = Scalar::all(1);
-	    //bottom rectangle
-	    markers(Rect(0,rectContourHumain.rows-5,rectContourHumain.cols, 5)) = Scalar::all(1);
-	    //left rectangle
-	    markers(Rect(0,0,5,rectContourHumain.rows)) = Scalar::all(1);
-	    //right rectangle
-	    markers(Rect(rectContourHumain.cols-5,0,5,rectContourHumain.rows)) = Scalar::all(1);
-	    //centre rectangle
-
-	    int centreW = rectContourHumain.cols/4;
-	    int centreH = rectContourHumain.rows/4;
-	    markers(Rect((rectContourHumain.cols/2)-(centreW/2),(rectContourHumain.rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
-	    markers.convertTo(markers,CV_BGR2GRAY);
-/**/
+	Point p1 = Point((cols/2)-(centreW/2),(rows/2)-(centreH/2)); 
+	Point p2 = Point((cols/2)+(centreW/2),(rows/2)+(centreH/2));
+	//drawRectangle(p1,p2,rectContourHumain);
 
 
 
@@ -282,6 +258,8 @@ cv::Mat edgeDetect(cv::Mat rectContourHumain){
 	double thresh = threshold(mask, mask, 1, 255, THRESH_BINARY);
 	bitwise_and(rectContourHumain, rectContourHumain, dest, mask);
 	dest.convertTo(dest,CV_8U);
+
+	imshow("contour", dest);
 
 	return dest;
 }
