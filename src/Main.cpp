@@ -67,11 +67,13 @@ int main(int argc, char** argv){
 	Rect bodyRect;
 	bodyLength = 180.0f;
 	img = imread( argv[1], 1 );
-	resize(img, des_img, Size(500, 900), 0, 0, INTER_LINEAR);
+	//resize(img, des_img, Size(500, 1000), 0, 0, INTER_LINEAR);
+	 resize(img, des_img, Size(), 0.50, 0.50);
 
+	//des_img = img;
 	// Processing
 	bodyRect = bodyDetect(des_img);
-
+	
 	bodyEdge = edgeDetect(des_img(bodyRect));
 
 	//bodyParts(des_img); //USE THIS IF THE INPUT IS A BINARY IMAGE
@@ -208,7 +210,7 @@ cv::Rect bodyDetect(cv::Mat image)
 cv::Mat edgeDetect(cv::Mat rectContourHumain){
 
 
-	Mat dest;
+	Mat dest, img_gray, img_bin;
 
 
 
@@ -223,10 +225,10 @@ cv::Mat edgeDetect(cv::Mat rectContourHumain){
 	//Rect(topleftcornerX, topleftcornerY, width, height);
 
 	//HOLD LEFT TO HEAD
-	markers(Rect(5,5,cols/3,rows/5)) = Scalar::all(1);
+//	markers(Rect(5,5,cols/3,rows/5)) = Scalar::all(1);
 
 	//HOLD RIGHT TO HEAD
-	markers(Rect(2*cols/3,5,cols/3-5,rows/5)) = Scalar::all(1);
+//	markers(Rect(2*cols/3,5,cols/3-5,rows/5)) = Scalar::all(1);
 
 	//left rectangle
 	markers(Rect(0,0,cols, 5)) = Scalar::all(1);
@@ -259,14 +261,12 @@ cv::Mat edgeDetect(cv::Mat rectContourHumain){
 	bitwise_and(rectContourHumain, rectContourHumain, dest, mask);
 	dest.convertTo(dest,CV_8U);
 
-	Mat src_gray, bin;
 	/// Convert the image to grayscale
-	cvtColor( dest, src_gray, COLOR_BGR2GRAY );
-	threshold(src_gray, bin, 1, 255, CV_THRESH_BINARY_INV);
+	cvtColor( dest, img_gray, COLOR_BGR2GRAY );
+	threshold(img_gray, img_bin, 1, 255, CV_THRESH_BINARY_INV);
 
-	imshow("contour", bin);
-
-	return dest;
+	imshow("bin", img_bin);
+	return img_bin;
 }
 /*
  * Output : The horizontal histogram of a binary image
