@@ -14,6 +14,7 @@ typedef std::unordered_map<std::string, cv::Point>::const_iterator pointIterator
 void drawRectangle(cv::Point p1, cv::Point p2, cv::Mat img);
 double distanceBetweenTwoPoints(double x, double y, double a, double b);
 cv::Rect bodyDetect(cv::Mat image);
+cv::Mat edgeDetect(cv::Mat image);
 cv::Rect cropBinary(cv::Mat binaryMat);
 pointMap bodyParts (cv::Mat img);
 cv::Mat horizontalProj(cv::Mat binaryMat);
