@@ -7,11 +7,6 @@
 #include <string>
 #include <cmath>
 
-#include <opencv2/core/utility.hpp>
-#include "opencv2/core.hpp"
-#include "opencv2/imgproc.hpp"
-#include "opencv2/imgcodecs.hpp"
-
 #include "main.h"
 
 using namespace cv;
@@ -76,7 +71,7 @@ int main(int argc, char** argv){
 	
 	bodyEdge = edgeDetect(des_img(bodyRect));
 
-	//bodyParts(des_img); //USE THIS IF THE INPUT IS A BINARY IMAGE
+	bodyParts(bodyEdge); //USE THIS IF THE INPUT IS A BINARY IMAGE
 	//bodyParts(des_img(bodyRect));
 
 	//imshow("image source", des_img);
@@ -403,24 +398,16 @@ cv::Rect cropBinary(Mat binaryMat){
 pointMap bodyParts (Mat img){
 	//Points : Head, Left foot, Right foot, Left Hand, Right hand, ...
 	pointMap bodyPoints;
-	//Grayscale matrix
-	cv::Mat grayscaleMat (img.size(), CV_8U);
-	//Convert BGR to Gray
-	cv::cvtColor( img, grayscaleMat, CV_BGR2GRAY );
-	//Binary image
-	cv::Mat binaryMat(grayscaleMat.size(), grayscaleMat.type());
-	//Apply thresholding
-	cv::threshold(grayscaleMat, binaryMat, 100, 255, cv::THRESH_BINARY);
-	//Reverse the colors
-	bitwise_not (binaryMat, binaryMat);
-
+	cv::Mat binaryMat = img.clone();
+	cv::bitwise_not(binaryMat, binaryMat);
+	
 	//Improve the image quality
 	binaryMat = closing(binaryMat);
 	binaryMat = opening(binaryMat);
 	cv::Rect cropRect = cropBinary(binaryMat);
 	binaryMat = binaryMat(cropRect);
 	cv::Mat original = img(cropRect);
-
+	
 	bodyPoints.emplace("Head", findHead(binaryMat));
 	bodyPoints.emplace("RightHand", findHand(binaryMat, false));
 	bodyPoints.emplace("LeftHand", findHand(binaryMat, true));
@@ -442,7 +429,7 @@ pointMap bodyParts (Mat img){
 		std::cout << x.first << ": " << x.second << std::endl;
 		circle(binaryMat, x.second, 5, Scalar(0,0,255), 4);
 	}
-	imshow("image bin", original);
+	imshow("image binaire", binaryMat);
 
 	cv::cvtColor(binaryMat, binaryCorpImage, CV_GRAY2RGB);
 	
@@ -499,19 +486,23 @@ cv::Point findHand(Mat bodyImg, bool side){
 cv::Point findFoot(Mat bodyImg, bool side){
 	cv::Point foot;
 	cv::Mat searchSpace, correctedSearchSpace, nonZero;
-	int colNumber;
-
+	int colNumber, i = 1;
 	if(side == false) colNumber = 0;
 	else if(side == true) colNumber = (int)(bodyImg.cols-1)/2; //We cut the image vertically
 
 	searchSpace = bodyImg(cv::Rect(colNumber, bodyImg.rows-1, (bodyImg.cols-1)/2, 1));
+	while(cv::countNonZero(searchSpace) == 0){
+		cout << i << endl;
+		searchSpace = bodyImg(cv::Rect(colNumber, bodyImg.rows-i, (bodyImg.cols-1)/2, 1));
+		++i;
+	}
+
 	cv::findNonZero(searchSpace, nonZero);
-	
 	int median = (int)nonZero.total() / 2;
 	foot = nonZero.at<Point>(median);
 
 	//Conversion to match the coordinates of the original image
-	foot.y = bodyImg.rows-1;
+	foot.y = bodyImg.rows-1-i;
 	if(side == true) foot.x = foot.x + (int)(bodyImg.cols-1)/2;
 
 	return foot;
