@@ -238,8 +238,8 @@ cv::Mat edgeDetect(cv::Mat rectContourHumain){
 	markers(Rect(cols-5,0,5,rows)) = Scalar::all(1);
 	//centre rectangle
 
-	int centreW = cols/2;
-	int centreH = 0.75*rows;
+	int centreW = cols/4;
+	int centreH = rows/4;
 	markers(Rect((cols/2)-(centreW/2),(rows/2)-(centreH/2), centreW, centreH)) = Scalar::all(2);
 	markers.convertTo(markers,CV_BGR2GRAY);
 
@@ -259,7 +259,12 @@ cv::Mat edgeDetect(cv::Mat rectContourHumain){
 	bitwise_and(rectContourHumain, rectContourHumain, dest, mask);
 	dest.convertTo(dest,CV_8U);
 
-	imshow("contour", dest);
+	Mat src_gray, bin;
+	/// Convert the image to grayscale
+	cvtColor( dest, src_gray, COLOR_BGR2GRAY );
+	threshold(src_gray, bin, 1, 255, CV_THRESH_BINARY_INV);
+
+	imshow("contour", bin);
 
 	return dest;
 }
