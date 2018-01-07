@@ -71,13 +71,13 @@ int main(int argc, char** argv){
 	
 	bodyEdge = edgeDetect(des_img(bodyRect));
 
-	bodyParts(bodyEdge); //USE THIS IF THE INPUT IS A BINARY IMAGE
+	pointMap parts = bodyParts(bodyEdge); //USE THIS IF THE INPUT IS A BINARY IMAGE
 	//bodyParts(des_img(bodyRect));
 
 	//imshow("image source", des_img);
 	//imshow("corp image", des_img(maxRect));
 
-//	measureBodyParts(des_img, bodyParts(des_img));
+	measureBodyParts(des_img, parts);
 
 
 	waitKey();
